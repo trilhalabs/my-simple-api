@@ -23,8 +23,24 @@ To start this container, map local port 80 into the container.
 sudo docker build -t <your-dockerhub-name>/<your-docker-repo-name> .
 
 # test the container locally
-sudo docker run <your-dockerhub-name>/<your-docker-repo-name> .
+sudo docker run <your-dockerhub-name>/<your-docker-repo-name>
+sudo docker run -d -p 80:80 --name my-simple-api <your-dockerhub-name>/my-simple-api
 
 # push it to your Docker repository
 sudo docker push <your-dockerhub-name>/<your-docker-repo-name> 
+```
+
+## Testing locally
+
+- Depends on run the image
+
+```shell
+
+http://localhost
+http://localhost/greeting
+http://localhost/wisdom
+
+#stopping the container
+docker stop my-simple-api
+
 ```

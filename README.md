@@ -7,6 +7,7 @@ Demonstração básica da implementação de uma API usando Docker, AWS ECS e In
 ------------- | ------------- | -------------
 Initial version  | Alexandre Sueiro  | 2022-04-08
 Adjusting infrastructure setup  | Alexandre Sueiro  | 2022-04-22
+Segregating IaaS code for another project (my-simple-api-iaas)  | Alexandre Sueiro  | 2022-05-25
 
 ## 📢 Informação / *Information*
 
@@ -34,32 +35,8 @@ O container inicia um webserver simples na porta 80, com 3 endpoints:
 Inspirado em / *Inspired by* [wisdom image](https://hub.docker.com/r/pauloclouddev/wisdom-img)
 
 **/cf-scripts**
-Diretório contendo os scripts cloudformation usados no projeto. Eles foram criados separadamente para facilitar a didática e entendimento e estão na sequência que devem ser executados
-*Directory containing the cloudformation scripts used in the project. They were created separately to facilitate didactics and understanding and are in the sequence that they must be performed.*
-
-- **00-trilhalabs-setup-vpc.yaml**: cria uma VPC, subnets, internet gateway, e outros. Ambiente de desenvolvimento e produção. / *it creates a VPC, subnets, internet gateway, and others. Development and production environment.*
-
-- **01-trilhalabs-setup-security-groups.yaml**: cria os grupos seguros associados a VPC. / *it creates the security groups associated with the VPC.*
-
-- **02-trilhalabs-setup-ec2-ecs.yaml**: cria o cluster ECS contendo as instâncias para rodar o docker container. / *it creates the ECS cluster containing the instances to run the docker container.*
-
-***
-
-Sequence Diagram
-
-```flow
-st=>start: Github
-st2=>start: Setup infra
-op=>operation: clone the project > git@github.com:trilhalabs/my-simple-api.git
-op2=>operation: Open the directory > /cf-scripts
-op3=>operation: Execute the setup scripts
-cond=>condition: Success?
-e=>end: Next configurations (working)
-
-st->op->st2->op2->op3->cond
-cond(yes)->e
-cond(no)->op3
-```
+A infra como códido (IaaC) foi transferida para um projeto específico (my-simple-api-iass)
+*Infra as a Code was tranferred to a specific project (my-simple-api-iaas)*
 
 ***
 
@@ -147,153 +124,9 @@ Caso não queira utilizar o **aws-vault** para gerenciar as chaves de sessão, e
 *Basically, I simulate the creation of 2 different environments, which depending on the parameters can be DEV or PROD (＄). By default, the generated environment simulates DEV.*
 *If you don't want to use **aws-vault** to manage session keys, run the commands below without using the first part **"aws-vault exec admlab --"***
 
-#### Creating a VPC
-
-- 1 VPC
-- 2 public subnets (default dev) Min 1 - Max 3
-- 2 AZs (default dev) Min 1 - Max 3
-- 1 internet gateway
-- 1 default route table for public subnet
-- 1 to 3 private subnets if prod environment (based on NumberOfAZs)
-- 1 default route table for public and private subnet (prod only)
-- Min 1 - Max 3 Natgateway if prod environment ＄*
-
-**＄** o simbolo indica que provavelmente haverá cobranças devido a infra montada / **＄** the symbol represents that there will probably be charges due to the infra criated.
-
-- **Principais comandos / Main commands**
-
-  - **aws cloudformation validate-template** => verifica se a estrutura do arquivos está bem formatada / checks if the file structure is well formatted
-
-  - **aws cloudformation create-stack** => criar a stackde execução no servição AWS Cloudformation / create the execution stack in the AWS Cloudformation service
-
-  - **aws cloudformation update-stack** => atualiza a stack se for necessário nova execução / update the stack if new execution is needed
-
-  - **aws cloudformation delete-stack** => remove a stack / delete the stack
-
-⚙ Command
-
-```shell
-cd cf-scripts/
-
-#VPC padrao para DEV / Default VPC for DEV 
-aws-vault exec admlab -- aws cloudformation validate-template --template-body file://00-trilhalabs-setup-vpc.yaml
-aws-vault exec admlab -- aws cloudformation create-stack --capabilities CAPABILITY_IAM --stack-name trilhalabs-myapi-vpc --template-body file://00-trilhalabs-setup-.yaml
-
-#=======DEV - Executando stack com parametros para 3 subnets em dev" / Running stack with parameters for 3 subnets in dev"
-aws-vault exec admlab -- aws cloudformation create-stack --capabilities CAPABILITY_IAM --stack-name trilhalabs-myapi-vpc--template-body file://00-trilhalabs-setup-vpc.yaml --parameters ParameterKey=NumberOfAZs,ParameterValue=3
-
-#=======PROD ＄- Executando stack para ambiente producao / Running stack for production environment
-aws-vault exec admlab -- aws cloudformation create-stack --capabilities CAPABILITY_IAM --stack-name trilhalabs-myapi-prod-vpc --template-body file://00-trilhalabs-setup-vpc.yaml --parameters ParameterKey=EnvType,ParameterValue=prod ParameterKey=NumberOfAZs,ParameterValue=3
-
-```
-
-#### Creating Security Groups
-
-- **Criando grupos de segurança e associando a VPC gerada** / **Creating security groups and binding the generated VPC**
-
-  - Abra o arquivo *01-trilhalabs-setup-security-groups.yaml* e veja as referências usadas para associar a VPC criada anteriormente. É usado o *Export Value* gerando em *Outputs* na Stack do Cloudformation / Open the *01-trilhalabs-setup-security-groups.yaml* file and see the references used to associate the VPC created earlier. *Export Value* is used generating in *Outputs* in the Cloudformation Stack.
-
-    - VpcId:
-        Fn::ImportValue: !Sub ${EnvironmentName}-${EnvType}-VPC
-
-⚙ Command
-
-```shell
-cd cf-scripts/
-
-#Security Groups
-aws-vault exec admlab -- aws cloudformation validate-template --template-body file://01-trilhalabs-setup-security-groups.yaml
-aws-vault exec admlab -- aws cloudformation create-stack --capabilities CAPABILITY_IAM --stack-name trilhalabs-setup-security-groups-dev --template-body file://01-trilhalabs-setup-security-groups.yaml
-
-#Caso queira associar a VPC de  / If you want to associate the product VPC
-aws-vault exec admlab -- aws cloudformation create-stack --capabilities CAPABILITY_IAM --stack-name trilhalabs-setup-security-groups-prod --template-body file://01-trilhalabs-setup-security-groups.yaml  --parameters ParameterKey=EnvType,ParameterValue=prod ParameterKey=VpcID,ParameterValue=vpc-xxx
-
-```
-
 ***
 
-#### 🔑 Creating Identity Access Management (IAM - Role)
-
-> Criação de *Roles* para permitir instancias EC2 existentes no *Cluster*, acessarem o *ECS - Elastic Conatiner Service*. As *roles* são usadas pelo agente do container rodando nos *nodes* EC2
->> Allows EC2 instances in an ECS cluster to access ECS. Used primarily by the container agent running on the EC2 box(es)
-
-##### EC2InstanceRole  
-
-- open AWS mgm console
-- go to service IAM
-- click on *Roles* in left navigation bar
-- click "*create Role*"
-- click on service "*Elastic Container Service*"
-- click "*EC2 Role for Elastic Container Service*"
-- click "*next*" , "*next Permissions*", "*next Name, review, and create*"
-- provide "*ecsInstanceRole*" as Role name
-- click on "*create*"
-
-##### ECSRole  
-
-> Allows ECS to create and manage AWS resources on your behalf
-
-- open AWS mgm console
-- go to service IAM
-- click on *Roles* in left navigation bar
-- click "*create Role*"
-- click on service "*Elastic Container Service*"
-- click "*Elastic Container Service*"
-- click "*next*" , "*next Permissions*", "*next Name, review, and create*"
-- provide "*ecsRole*" as Role name
-- click on "*create role*"
-
-##### ECSTaskExecutionRole
-
-> Allows ECS tasks to call AWS services on your behalf.
-
-- open AWS mgm console
-- go to service IAM
-- click on *Roles* in left navigation bar
-- click "*create Role*"
-- click on service "*Elastic Container Service*"
-- click "*Elastic Container Service Task*"
-- click "*next*" , "*next Permissions*", "*next Name, review, and create*"
-- provide "*ecsTaskExecutionRole*" as Role name
-- click on "*create*"
-
-##### ECSAutoscalingRole
-
-> Allows Auto Scaling to access and update ECS services
-
-- open AWS mgm console
-- go to service IAM
-- click on *Roles* in left navigation bar
-- click "*create Role*"
-- click on service "*Elastic Container Service*"
-- click "*Elastic Container Service Autoscale*"
-- click "*next*" , "*next Permissions*", "*next Name, review, and create*"
-- provide "*ecsAutoscalingRole*" as Role name
-- click on "*create*"
-
-#### Creating ECS Cluster: EC2
-
-> Instancia EC2 (Node) para cluster ECS / ECS cluster launchtype EC2 (Node).
-
-- Atente para substituir "ssh-key" por sua própria chave de segurança no comando de execução da stack / *Be careful to replace "ssh-key" with your own security key in the stack execution command*
-
-⚙ Command
-
-```shell
-cd cf-scripts/
-
-aws-vault exec admlab -- aws cloudformation validate-template --template-body file://02-trilhalabs-setup-ec2-ecs.yaml
-
-aws-vault exec admlab -- aws cloudformation create-stack --capabilities CAPABILITY_IAM --stack-name trilhalabs-myapi-ecs-ec2 --template-body file://02-trilhalabs-setuters ParameterKey=KeyName,ParameterValue=<ssh-key>
-
-#caso precise atualizar a stack, exemplo do update / if you need to update the stack, example of update command
-aws-vault exec admlab -- aws cloudformation update-stack --stack-name trilhalabs-myapi-ecs-ec2 --template-body file://02-trilhalabs-setup-ec2-ecs.yaml --parameters PameterValue=<ssh-key>
-
-```
-
-***
-
-## 📘 Capitulo 3: ... / Chapter 3: ...
+## 📘 Capitulo 3: ... / Chapter 3
 
 ***
 
@@ -302,16 +135,5 @@ aws-vault exec admlab -- aws cloudformation update-stack --stack-name trilhalabs
 🧹 Comandos para limpeza dos ambientes e evitar eventuais cobranças ($) desnecessárias/ Commands for cleaning environments and avoid unnecessary charges ($)
 
 ```shell
-#Delete Stacks
-#DEV
-aws-vault exec admlab -- aws cloudformation delete-stack --stack-name trilhalabs-myapi-ecs-ec2
-aws-vault exec admlab -- aws cloudformation delete-stack --stack-name trilhalabs-myapi-sg
-aws-vault exec admlab -- aws cloudformation delete-stack --stack-name trilhalabs-myapi-vpc
-
-
-#PROD
-aws-vault exec admlab -- aws cloudformation delete-stack --stack-name trilhalabs-myapi-prod-ecs-ec2
-aws-vault exec admlab -- aws cloudformation delete-stack --stack-name trilhalabs-myapi-prod-sg
-aws-vault exec admlab -- aws cloudformation delete-stack --stack-name trilhalabs-myapi-prod-vpc
-
+#commands
 ```

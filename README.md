@@ -35,7 +35,7 @@ O container inicia um webserver simples na porta 80, com 3 endpoints:
 Inspirado em / *Inspired by* [wisdom image](https://hub.docker.com/r/pauloclouddev/wisdom-img)
 
 **/cf-scripts**
-A infra como códido (IaaC) foi transferida para um projeto específico (my-simple-api-iass)
+A infra como códido (IaaC) foi transferida para um projeto específico (my-simple-api-iaas)
 *Infra as a Code was tranferred to a specific project (my-simple-api-iaas)*
 
 ***
@@ -113,26 +113,20 @@ docker stop my-simple-api
 
 ### ☁ Criando infraestrutura como código / Creating infrastructure-as-a-code
 
-Por premissa, estou partindo que você **já possua uma conta na AWS e ao menos um usuário com chaves de acesso via linha de comando** (Access Key e Secret Access Key).
-
-Para executar os comandos de integração com a AWS, usei o [aws-cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) e para gerenciar as chaves de acesso, utilizei o [aws-vault](https://github.com/99designs/aws-vault).
-Basicamente, simulo a criação de 2 ambientes diferentes, que dependendo dos parâmetros pode ser DEV ou PROD (＄). Por padrão, o ambiente gerado, simula DEV.
-Caso não queira utilizar o **aws-vault** para gerenciar as chaves de sessão, execute os comandos abaixo sem utilizar a primeira parte **"aws-vault exec admlab --"**
-
-*As a premise, I'm assuming you **already have an AWS account and at least one user with command-line access keys** (Access Key and Secret Access Key).*
-*To run AWS integration commands, I used [aws-cli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and to manage the secrets, I used  [aws-vault](https://github.com/99designs/aws-vault).*
-*Basically, I simulate the creation of 2 different environments, which depending on the parameters can be DEV or PROD (＄). By default, the generated environment simulates DEV.*
-*If you don't want to use **aws-vault** to manage session keys, run the commands below without using the first part **"aws-vault exec admlab --"***
+Use o projeto / *Use the project* [my-simple-api-iaas](https://github.com/trilhalabs/my-simple-api-iaas.git)
 
 ***
 
 ## 📘 Capitulo 3: ... / Chapter 3
 
+Working...
+
 ***
 
 ## 📘 Capitulo 4: Limpeza dos ambientes / Chapter 4: Cleaning of enviroments
 
-🧹 Comandos para limpeza dos ambientes e evitar eventuais cobranças ($) desnecessárias/ Commands for cleaning environments and avoid unnecessary charges ($)
+Working...
+🧹 Comandos para limpeza dos ambientes e evitar eventuais cobranças $$ desnecessárias/ Commands for cleaning environments and avoid unnecessary charges $$
 
 ```shell
 #commands
